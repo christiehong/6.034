@@ -6,6 +6,9 @@ import sys
 import os
 import tarfile
 
+from constraint_api import *
+from test_problems import constraint_or
+
 try:
     from cStringIO import StringIO
 except ImportError:
@@ -78,6 +81,49 @@ def get_lab_module():
 
     return lab
 
+# encode/decode Constraint and ConstraintSatisfactionProblem objects
+def constraint_greater_than(a,b):
+    return a > b
+constraint_dict = {'constraint_equal': constraint_equal,
+                   'constraint_different': constraint_different,
+                   'constraint_or': constraint_or,
+                   'constraint_greater_than': constraint_greater_than}
+def encode_constraint(constraint):
+    fn_name = constraint.constraint_fn.__name__
+    if fn_name == '<lambda>':
+        print (' ** Note: Unfortunately, the online tester is unable to accept '
+               +'lambda functions. To pass the online tests, use named '
+               +'functions instead. **')
+    elif fn_name not in constraint_dict:
+        print ('Error: constraint function', fn_name, 'cannot be transmitted '
+               +'to server.  Please use a pre-defined constraint function instead.')
+    return [constraint.var1, constraint.var2, fn_name]
+def decode_constraint(var1, var2, constraint_fn_name):
+    return Constraint(var1, var2, constraint_dict[constraint_fn_name])
+
+def encode_CSP(csp):
+    return [csp.variables, map(encode_constraint, csp.constraints),
+            csp.unassigned_vars, csp.domains, csp.assigned_values]
+def decode_CSP(variables, constraint_list, unassigned_vars, domains, assigned_values):
+    csp = ConstraintSatisfactionProblem(variables)
+    csp.constraints = [decode_constraint(*c_args) for c_args in constraint_list]
+    csp.unassigned_vars = unassigned_vars
+    csp.domains = domains
+    csp.assigned_values = assigned_values
+    return csp
+
+# decode functions received from server
+def lambda_F(p, v): return False
+def lambda_T(p, v): return True
+def lambda_1(p, v): return len(p.get_domain(v))==1
+def lambda_12(p, v): return len(p.get_domain(v)) in [1, 2]
+def lambda_B(p, v): return v=='B'
+def lambda_BC(p, v): return v in 'BC'
+function_dict = {'lambda_F': lambda_F, 'lambda_T': lambda_T,
+                 'lambda_1': lambda_1, 'lambda_B': lambda_B,
+                 'lambda_12': lambda_12, 'lambda_BC': lambda_BC}
+
+
 def type_decode(arg, lab):
     """
     XMLRPC can only pass a very limited collection of types.
@@ -88,26 +134,40 @@ def type_decode(arg, lab):
     constructor takes a list as an argument; it uses that to reconstruct the
     original data type.
     """
-    if isinstance(arg, list) and len(arg) >= 1: # We'll leave tuples reserved for some other future magic
-        try:
-            mytype = arg[0]
-            data = arg[1:]
-            return getattr(lab, mytype)([ type_decode(x, lab) for x in data ])
-        except AttributeError:
-            return [ type_decode(x, lab) for x in arg ]
-        except TypeError:
-            return [ type_decode(x, lab) for x in arg ]
+    if isinstance(arg, list) and len(arg) >= 1: # There is no future magic for tuples.
+#        if arg[0] == 'Constraint': # not used because no lone Constraints (ie outside of a CSP) are sent from server
+#            return decode_constraint(*type_decode(arg[1], lab))
+        if arg[0] == 'CSP':
+            return decode_CSP(*type_decode(arg[1], lab))
+        elif arg[0] == 'callable':
+            return function_dict[arg[1]]
+        else:
+            try:
+                mytype = arg[0]
+                data = arg[1:]
+                return getattr(lab, mytype)([ type_decode(x, lab) for x in data ])
+            except AttributeError:
+                return [ type_decode(x, lab) for x in arg ]
+            except TypeError:
+                return [ type_decode(x, lab) for x in arg ]
     else:
         return arg
 
+def is_list_of_constraints(arg):
+    return (arg != [] and isinstance(arg, (tuple, list))
+            and all(map(isinstance_Constraint, arg)))
 
 def type_encode(arg):
-    "Encode trees as lists in a way that can be decoded by 'type_decode'"
-    if isinstance(arg, list) and not type(arg) in (list,tuple):
-        return [ arg.__class__.__name__ ] + [ type_encode(x) for x in arg ]
+    "Encode classes as lists in a way that can be decoded by 'type_decode'"
+    if isinstance_Constraint(arg):
+        return [ 'Constraint', type_encode(encode_constraint(arg)) ]
+    elif (isinstance(arg, list) and len(arg) == 2 # special case for FUNCTION_WITH_CSP
+          and isinstance_ConstraintSatisfactionProblem(arg[1])):
+        return [type_encode(arg[0]), type_encode(encode_CSP(arg[1]))]
+    elif is_list_of_constraints(arg): # special case for all_different
+        return ['list-of-constraints', map(encode_constraint, arg)]
     else:
         return arg
-
 
 def run_test(test, lab):
     """
@@ -133,10 +193,19 @@ def run_test(test, lab):
         return attr
     elif mytype == 'FUNCTION':
         return apply(attr, args)
+    elif mytype == 'FUNCTION_WITH_CSP':
+        # return modified version of input csp
+        for a in args:
+            if isinstance_ConstraintSatisfactionProblem(a):
+                return [apply(attr, args), a]
+        raise Exception("Test Error: 'FUNCTION_WITH_CSP' test missing CSP. "
+                        + "Please contact a TA if you see this error.")
     elif mytype == 'MULTIFUNCTION':
         return [ run_test( (id, 'FUNCTION', attr_name, FN), lab) for FN in args ]
     elif mytype == 'FUNCTION_ENCODED_ARGS':
         return run_test( (id, 'FUNCTION', attr_name, type_decode(args, lab)), lab )
+    elif mytype == 'FUNCTION_ENCODED_ARGS_WITH_CSP':
+        return run_test( (id, 'FUNCTION_WITH_CSP', attr_name, type_decode(args, lab)), lab )
     else:
         raise Exception("Test Error: Unknown TYPE: " + str(mytype)
                         + ".  Please make sure you have downloaded the latest"
