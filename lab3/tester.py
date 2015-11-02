@@ -6,6 +6,13 @@ import sys
 import os
 import tarfile
 
+from game_api import (AbstractGameState, ConnectFourBoard, is_class_instance,
+                      always_zero)
+from toytree import (ToyTree, toytree_is_game_over, toytree_generate_next_states,
+                     toytree_endgame_score_fn, toytree_heuristic_fn)
+from lab3 import (is_game_over_connectfour, next_boards_connectfour,
+                  endgame_score_connectfour)
+
 try:
     from cStringIO import StringIO
 except ImportError:
@@ -78,23 +85,67 @@ def get_lab_module():
 
     return lab
 
-import os
-def find_attr(module, name):
-    try:
-        return getattr(module, name)
-    except AttributeError:
-        try:
-            return getattr(sys.modules[globals()['__name__']], name)
-        except AttributeError:
-            for dirname, dirnames, filenames in os.walk("."):
-                for filename in filenames:
-                    if ".py" == filename[-3:]:
-                        mod = __import__(filename[:-3])
-                        try:
-                            return getattr(mod, name)
-                        except AttributeError:
-                            continue
-            raise AttributeError
+
+# encode/decode objects
+def encode_AGS(ags):
+    return [ags.snapshot, ags.is_game_over_fn, ags.generate_next_states_fn,
+            ags.endgame_score_fn]
+def decode_AGS(snapshot, is_game_over_fn, generate_next_states_fn,
+               endgame_score_fn):
+    return AbstractGameState(snapshot, is_game_over_fn, generate_next_states_fn,
+                             endgame_score_fn)
+
+def encode_C4B(board):
+    return [board.board_array, board.players, board.whose_turn,
+            board.prev_move_string]
+def decode_C4B(board_array, players, whose_turn, prev_move_string):
+    board = ConnectFourBoard(board_array, players, whose_turn)
+    board.prev_move_string = prev_move_string
+    return board
+
+def encode_ToyTree(tree):
+    if tree.children:
+        return [tree.label, tree.score, map(encode_ToyTree, tree.children)]
+    return [tree.label, tree.score, list()]
+def decode_ToyTree(args):
+    label, score, children_encoded = args
+    tree = ToyTree(label, score)
+    if children_encoded:
+        tree.children = map(decode_ToyTree, children_encoded)
+    return tree
+
+# decode functions received from server
+def l_valuate(board, player): return len(sum(board.get_all_chains(player),[]))
+def density(board, player) : return sum([abs(index-3)
+                                         for row in board.board_array
+                                         for (piece, index) in zip(row, range(board.num_cols))
+                                         if piece and (piece == 1) == (board.count_pieces() + player) % 2])
+def lambda_density_heur(board, maximize):
+    return ([-1,1][maximize] * (density(board, False) - density(board, True)
+            + 2*l_valuate(board,True) - 3*l_valuate(board, False)))
+def lambda_minus_heur(board, maximize):
+    return [-1,1][maximize] * (l_valuate(board,True) - l_valuate(board, False))
+
+def lambda_tree_negate(tree, is_max): return [-1,1][is_max] * tree.score
+
+def lambda_child_score(tree, is_max):
+    if not tree.children:
+        return tree.score
+    return tree.children[0].score
+
+function_dict = {'is_game_over_connectfour': is_game_over_connectfour,
+                 'next_boards_connectfour': next_boards_connectfour,
+                 'endgame_score_connectfour': endgame_score_connectfour,
+                 'toytree_is_game_over': toytree_is_game_over,
+                 'toytree_generate_next_states': toytree_generate_next_states,
+                 'toytree_endgame_score_fn': toytree_endgame_score_fn,
+                 'toytree_heuristic_fn': toytree_heuristic_fn,
+                 'lambda_density_heur': lambda_density_heur,
+                 'lambda_minus_heur': lambda_minus_heur,
+                 'lambda_tree_negate': lambda_tree_negate,
+                 'lambda_child_score': lambda_child_score,
+                 'always_zero': always_zero}
+
 
 def type_decode(arg, lab):
     """
@@ -106,19 +157,48 @@ def type_decode(arg, lab):
     constructor takes a list as an argument; it uses that to reconstruct the
     original data type.
     """
-    if isinstance(arg, list) and len(arg) > 1: # We'll leave tuples reserved for some other future magic
-        if isinstance(arg[0], list):
-            return [type_decode(arg[0], lab)] + type_decode(arg[1:], lab)
+    if isinstance(arg, list) and len(arg) >= 1: # There is no future magic for tuples.
+        if arg[0] == 'AGS' and isinstance(arg[1], list):
+            return decode_AGS(*[type_decode(x, lab) for x in arg[1]])
+        elif arg[0] == 'C4B' and isinstance(arg[1], list):
+            return decode_C4B(*arg[1])
+        elif arg[0] == 'ToyTree' and isinstance(arg[1], list):
+            return decode_ToyTree(arg[1]) # This is intentionally different.
+        elif arg[0] == 'callable':
+            try:
+                return function_dict[arg[1]]
+            except KeyError:
+                error_string = "Error: invalid function name received from server: " + str(arg[1])
+                print error_string + ". Please contact a TA if you continue to see this error."
+                return error_string
         else:
-            return arg
+            return [ type_decode(x, lab) for x in arg ]
     else:
         return arg
 
 
 def type_encode(arg):
-    "Encode trees as lists in a way that can be decoded by 'type_decode'"
-    if isinstance(arg, list) and not type(arg) in (list,tuple):
-        return [ arg.__class__.__name__ ] + [ type_encode(x) for x in arg ]
+    "Encode classes as lists in a way that can be decoded by 'type_decode'"
+    if isinstance(arg, (list, tuple)):
+        return [type_encode(a) for a in arg]
+    elif is_class_instance(arg, 'AbstractGameState'):
+        return ['AGS', map(type_encode, encode_AGS(arg))]
+    elif is_class_instance(arg, 'ConnectFourBoard'):
+        return ['C4B', encode_C4B(arg)]
+    elif is_class_instance(arg, 'ToyTree'):
+        return ['ToyTree', encode_ToyTree(arg)]
+    elif is_class_instance(arg, 'AnytimeValue'):
+        return ['AnytimeValue_history', type_encode(arg.history)]
+    elif callable(arg):
+        fn_name = arg.__name__
+        if fn_name == '<lambda>':
+            print (' ** Note: Unfortunately, the online tester is unable to '
+                   +'accept lambda functions. To pass the online tests, use '
+                   +'named functions instead. **')
+        elif fn_name not in function_dict:
+            print ('Error: constraint function', fn_name, 'cannot be transmitted '
+                   +'to server.  Please use a pre-defined constraint function instead.')
+        return ['callable', arg.__name__]
     else:
         return arg
 
@@ -148,7 +228,8 @@ def run_test(test, lab):
     elif mytype == 'FUNCTION':
         return apply(attr, args)
     elif mytype == 'MULTIFUNCTION':
-        return [ run_test( (id, 'FUNCTION', attr_name, FN), lab) for FN in args ]
+        return [ run_test( (id, 'FUNCTION', attr_name, FN), lab)
+                for FN in type_decode(args, lab) ]
     elif mytype == 'FUNCTION_ENCODED_ARGS':
         return run_test( (id, 'FUNCTION', attr_name, type_decode(args, lab)), lab )
     else:
@@ -332,4 +413,3 @@ if __name__ == '__main__':
             test_online()
         else:
             print "Local tests passed! Run 'python %s submit' to submit your code and have it graded." % sys.argv[0]
-
