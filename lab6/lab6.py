@@ -46,7 +46,24 @@ def forward_prop(net, input_values, threshold_fn=stairstep):
     This function should not modify the input net.  Returns a tuple containing:
     (1) the final output of the neural net
     (2) a dictionary mapping neurons to their immediate outputs"""
-    raise NotImplementedError
+    neuron_outputs = {}
+    # Plug in input and get output from each neuron, starting at first layers and working forward
+    for neuron in net.topological_sort():
+        neuron_input_total = 0
+        # For each input into neuron (variable/number or neuron output) run through wire weight and summate
+        for input_node in net.get_incoming_neighbors(neuron):
+            # If input is direct use it, if it's a neuron's output as input, get from neuron_outputs
+            if isinstance(input_node, int):
+                weighted_input = input_node * net.get_wires(input_node, neuron)[0].weight
+            else:
+                if input_node in input_values:
+                    weighted_input = input_values[input_node] * net.get_wires(input_node, neuron)[0].weight
+                else:
+                    weighted_input = neuron_outputs[input_node] * net.get_wires(input_node, neuron)[0].weight
+            neuron_input_total += weighted_input
+        # Run summated total through threshold and assign output to neuron_outputs
+        neuron_outputs[neuron] = threshold_fn(neuron_input_total)
+    return (neuron_outputs[net.get_output_neuron()], neuron_outputs)
 
 # Backward propagation
 def calculate_deltas(net, input_values, desired_output):
