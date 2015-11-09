@@ -155,12 +155,18 @@ def norm(v):
 # Equation 1
 def positiveness(svm, point):
     "Computes the expression (w dot x + b) for the given point"
-    raise NotImplementedError
+    return dot_product(svm.boundary.w, point.coords) + svm.boundary.b
 
 def classify(svm, point):
     """Uses given SVM to classify a Point.  Assumes that point's classification
     is unknown.  Returns +1 or -1, or 0 if point is on boundary"""
-    raise NotImplementedError
+    if positiveness(svm, point) > 0:
+        return 1
+    elif positiveness(svm, point) <0:
+        return -1
+    # Else it's on the boundary
+    else:
+        return 0
 
 # Equation 2
 def margin_width(svm):
