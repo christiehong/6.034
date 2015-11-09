@@ -104,18 +104,12 @@ def update_weights(net, input_values, desired_output, r=1):
     updated weights."""
     neuron_update_coefficients = calculate_deltas(net, input_values, desired_output)
     neuron_outputs = forward_prop(net, input_values, threshold_fn=sigmoid)[1]
-    print neuron_update_coefficients
-    print 'neuron_update_coefficients^^^'
-    print neuron_outputs
-    print 'neuron_outputs^^^^'
     for wire in net.wires:
-        print wire
-        print 'wire it is'
         # If start or end of net, no weight to update
         if not wire.startNode in neuron_outputs or not wire.endNode in neuron_update_coefficients: 
             pass
         else:
-            wire.weight = r * neuron_outputs[wire.startNode] * neuron_update_coefficients[wire.endNode]
+            wire.weight = float(r) * float(neuron_outputs[wire.startNode]) * float(neuron_update_coefficients[wire.endNode])
     return net
 
 def back_prop(net, input_values, desired_output, r=1, accuracy_threshold=-.001):
@@ -123,6 +117,18 @@ def back_prop(net, input_values, desired_output, r=1, accuracy_threshold=-.001):
     function to compute output.  Returns a tuple containing:
     (1) the modified neural net, with trained weights
     (2) the number of iterations (that is, the number of weight updates)"""
+    # iterations = 0
+    # actual_output = forward_prop(net, input_values, sigmoid)[0]
+    # accuracy_test = accuracy(desired_output, actual_output)
+
+    # while accuracy_test > accuracy_threshold:
+    #     iterations += 1
+    #     print net
+    #     print update_weights(net, input_values, desired_output, r)
+    #     net = update_weights(net, input_values, desired_output, r)
+    #     accuracy_test = accuracy(desired_output, forward_prop(net, input_values, sigmoid)[0])
+
+    # return (net, iterations)
     raise NotImplementedError
 
 
@@ -132,11 +138,14 @@ def back_prop(net, input_values, desired_output, r=1, accuracy_threshold=-.001):
 def dot_product(u, v):
     """Computes dot product of two vectors u and v, each represented as a tuple
     or list of coordinates.  Assume the two vectors are the same length."""
-    raise NotImplementedError
+    scalar = 0
+    for i in range(len(u)):
+        scalar += u[i]*v[i]
+    return scalar 
 
 def norm(v):
     "Computes length of a vector v, represented as a tuple or list of coords."
-    raise NotImplementedError
+    return dot_product(v, v)**0.5
 
 # Equation 1
 def positiveness(svm, point):
