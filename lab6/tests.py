@@ -17,7 +17,7 @@ def dict_contains(d, pairs):
 def dict_approx_equal(dict1, dict2, epsilon=0.00000001):
     """Returns True if two dicts have the same keys and approximately equal
     values, otherwise False"""
-    return (dict1.keys() == dict2.keys()
+    return (set(dict1.keys()) == set(dict2.keys())
             and all([approx_equal(dict1[key], dict2[key], epsilon)
                      for key in dict1.keys()]))
 
@@ -371,7 +371,7 @@ make_test(type = 'FUNCTION_ENCODED_ARGS',
 def update_weights_3_getargs() :  #TEST 25
     return [nn_branching.shuffle_lists(), {'in': 17}, 1]
 def update_weights_3_testanswer(val, original_val = None) :
-    return val == nn_branching_update_iter1
+    return val.__eq__(nn_branching_update_iter1, 0.00000001)
 make_test(type = 'FUNCTION_ENCODED_ARGS',
           getargs = update_weights_3_getargs,
           testanswer = update_weights_3_testanswer,

@@ -53,16 +53,23 @@ def forward_prop(net, input_values, threshold_fn=stairstep):
         # For each input into neuron (variable/number or neuron output) run through wire weight and summate
         for input_node in net.get_incoming_neighbors(neuron):
             # If input is direct use it, if it's a neuron's output as input, get from neuron_outputs
-            if isinstance(input_node, int):
-                weighted_input = input_node * net.get_wires(input_node, neuron)[0].weight
-            else:
+            if isinstance(input_node, str):
                 if input_node in input_values:
                     weighted_input = input_values[input_node] * net.get_wires(input_node, neuron)[0].weight
                 else:
                     weighted_input = neuron_outputs[input_node] * net.get_wires(input_node, neuron)[0].weight
+            else:
+                weighted_input = input_node * net.get_wires(input_node, neuron)[0].weight            
             neuron_input_total += weighted_input
         # Run summated total through threshold and assign output to neuron_outputs
         neuron_outputs[neuron] = threshold_fn(neuron_input_total)
+
+    for input_name in net.inputs:
+        if isinstance(input_name, str):   
+            neuron_outputs[input_name] = input_values[input_name]
+        else:
+            neuron_outputs[input_name] = input_name
+
     return (neuron_outputs[net.get_output_neuron()], neuron_outputs)
 
 # Backward propagation
@@ -106,10 +113,10 @@ def update_weights(net, input_values, desired_output, r=1):
     neuron_outputs = forward_prop(net, input_values, threshold_fn=sigmoid)[1]
     for wire in net.wires:
         # If start or end of net, no weight to update
-        if not wire.startNode in neuron_outputs or not wire.endNode in neuron_update_coefficients: 
+        if wire.endNode == NeuralNet.OUT: 
             pass
         else:
-            wire.weight = float(r) * float(neuron_outputs[wire.startNode]) * float(neuron_update_coefficients[wire.endNode])
+            wire.weight += r * neuron_outputs[wire.startNode] * neuron_update_coefficients[wire.endNode]
     return net
 
 def back_prop(net, input_values, desired_output, r=1, accuracy_threshold=-.001):
@@ -117,19 +124,17 @@ def back_prop(net, input_values, desired_output, r=1, accuracy_threshold=-.001):
     function to compute output.  Returns a tuple containing:
     (1) the modified neural net, with trained weights
     (2) the number of iterations (that is, the number of weight updates)"""
-    # iterations = 0
-    # actual_output = forward_prop(net, input_values, sigmoid)[0]
-    # accuracy_test = accuracy(desired_output, actual_output)
+    iterations = 0
+    actual_output = forward_prop(net, input_values, sigmoid)[0]
 
-    # while accuracy_test > accuracy_threshold:
-    #     iterations += 1
-    #     print net
-    #     print update_weights(net, input_values, desired_output, r)
-    #     net = update_weights(net, input_values, desired_output, r)
-    #     accuracy_test = accuracy(desired_output, forward_prop(net, input_values, sigmoid)[0])
+    while accuracy(desired_output, actual_output) < accuracy_threshold:
+        iterations += 1
+        # print net
+        # print update_weights(net, input_values, desired_output, r)
+        net = update_weights(net, input_values, desired_output, r)
+        actual_output = forward_prop(net, input_values, sigmoid)[0]
 
-    # return (net, iterations)
-    raise NotImplementedError
+    return (net, iterations)
 
 
 #### SUPPORT VECTOR MACHINES ###################################################
