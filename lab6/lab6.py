@@ -76,16 +76,16 @@ def calculate_deltas(net, input_values, desired_output):
     neurons_backwards.reverse()
 
     # For each neuron starting at the last
-    for neuron in neurons_backwards:
+    for neuron in neurons_backwards: 
 
-        # If neuron in final layer
+        # This neuron output
         outB = neuron_outputs[neuron]
-        outStar = desired_output
         # Last neuron output
         out = neuron_outputs[neurons_backwards[0]]
 
+        # Calculate delta_b different ways depending on if neuron is in last layer
         if net.is_output_neuron(neuron):
-            delta_b = outB*(1-outB)*(outStar-out)
+            delta_b = outB*(1-outB)*(desired_output-out)
             neuron_update_coefficients[neuron] = delta_b
         else:
             delta_b_summed_part = 0
@@ -93,6 +93,7 @@ def calculate_deltas(net, input_values, desired_output):
                 delta_b_summed_part += wire.weight * neuron_update_coefficients[wire.endNode]
             delta_b = outB*(1-outB)*delta_b_summed_part
             neuron_update_coefficients[neuron] = delta_b
+
     return neuron_update_coefficients
 
 
@@ -101,7 +102,21 @@ def update_weights(net, input_values, desired_output, r=1):
     weight updates for entire neural net, then updates all weights.  Uses
     sigmoid function to compute output.  Returns the modified neural net, with
     updated weights."""
-    raise NotImplementedError
+    neuron_update_coefficients = calculate_deltas(net, input_values, desired_output)
+    neuron_outputs = forward_prop(net, input_values, threshold_fn=sigmoid)[1]
+    print neuron_update_coefficients
+    print 'neuron_update_coefficients^^^'
+    print neuron_outputs
+    print 'neuron_outputs^^^^'
+    for wire in net.wires:
+        print wire
+        print 'wire it is'
+        # If start or end of net, no weight to update
+        if not wire.startNode in neuron_outputs or not wire.endNode in neuron_update_coefficients: 
+            pass
+        else:
+            wire.weight = r * neuron_outputs[wire.startNode] * neuron_update_coefficients[wire.endNode]
+    return net
 
 def back_prop(net, input_values, desired_output, r=1, accuracy_threshold=-.001):
     """Updates weights until accuracy surpasses minimum_accuracy.  Uses sigmoid
