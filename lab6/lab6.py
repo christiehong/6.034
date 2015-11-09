@@ -70,7 +70,31 @@ def calculate_deltas(net, input_values, desired_output):
     """Computes the update coefficient (delta_B) for each neuron in the
     neural net.  Uses sigmoid function to compute output.  Returns a dictionary
     mapping neuron names to update coefficient (delta_B values)."""
-    raise NotImplementedError
+    neuron_update_coefficients = {}
+    neuron_outputs = forward_prop(net, input_values, threshold_fn=sigmoid)[1]
+    neurons_backwards = net.topological_sort()
+    neurons_backwards.reverse()
+
+    # For each neuron starting at the last
+    for neuron in neurons_backwards:
+
+        # If neuron in final layer
+        outB = neuron_outputs[neuron]
+        outStar = desired_output
+        # Last neuron output
+        out = neuron_outputs[neurons_backwards[0]]
+
+        if net.is_output_neuron(neuron):
+            delta_b = outB*(1-outB)*(outStar-out)
+            neuron_update_coefficients[neuron] = delta_b
+        else:
+            delta_b_summed_part = 0
+            for wire in net.get_outgoing_wires(neuron):
+                delta_b_summed_part += wire.weight * neuron_update_coefficients[wire.endNode]
+            delta_b = outB*(1-outB)*delta_b_summed_part
+            neuron_update_coefficients[neuron] = delta_b
+    return neuron_update_coefficients
+
 
 def update_weights(net, input_values, desired_output, r=1):
     """Performs a single step of back-propagation.  Computes delta_B values and

@@ -226,12 +226,20 @@ def minimax_search(state, heuristic_fn=always_zero, depth_limit=INF, maximize=Tr
     # Get all the possible paths, store in paths = []
     depth_expand(state, [])
 
+    global depth
+    depth = []
 
     def minimax_score(state, maximize):
-        if state.is_game_over():
+        global depth
+        if len(depth) == depth_limit:
+            return [heuristic_fn(state), state]
+            depth.append(1)
+        elif state.is_game_over():
             return [state.get_endgame_score(maximize), state]
+            depth.append(1)
         else:
             if maximize:
+                depth += [1]
                 max_score = max([minimax_score(child, False)[0] for child in state.generate_next_states()])
                 for child in state.generate_next_states():
                     if minimax_score(child, False)[1].get_endgame_score(maximize) == max_score:
@@ -239,6 +247,7 @@ def minimax_search(state, heuristic_fn=always_zero, depth_limit=INF, maximize=Tr
 
                 return [max_score, max_state]
             else:
+                depth += [1]
                 min_score = min([minimax_score(child, True)[0] for child in state.generate_next_states()])
                 for child in state.generate_next_states():
                     if minimax_score(child, True)[1].get_endgame_score(maximize) == min_score:
@@ -257,66 +266,7 @@ def minimax_search(state, heuristic_fn=always_zero, depth_limit=INF, maximize=Tr
         num_evaluations += 1
 
     return (relevant_paths[0], score, num_evaluations)
-    
-    # paths = []
 
-    # def depth_expand(state, path):
-    #     # for each child of parent state
-
-    #     new_path = path[:]
-    #     new_path.append(state)
-
-    #     if state.is_game_over():
-    #         paths.append(new_path)
-    #         return True
-
-    #     else:
-    #         for child in state.generate_next_states():
-    #             depth_expand(child, new_path)
-
-    # # Get all the possible paths, store in paths = []
-    # depth_expand(state, [])
-
-    # global depth
-    # depth = []
-
-    # def minimax_score(state, maximize):
-    #     global depth
-    #     if state.is_game_over():
-    #         return [state.get_endgame_score(maximize), state]
-    #         depth.append(1)
-    #     if len(depth) == depth_limit:
-    #         return [heuristic_fn(state), state]
-    #         depth.append(1)
-    #     else:
-    #         if maximize:
-    #             depth += [1]
-    #             max_score = max([minimax_score(child, False)[0] for child in state.generate_next_states()])
-    #             for child in state.generate_next_states():
-    #                 if minimax_score(child, False)[1].get_endgame_score(maximize) == max_score:
-    #                     max_state = child
-
-    #             return [max_score, max_state]
-    #         else:
-    #             depth += [1]
-    #             min_score = min([minimax_score(child, True)[0] for child in state.generate_next_states()])
-    #             for child in state.generate_next_states():
-    #                 if minimax_score(child, True)[1].get_endgame_score(maximize) == min_score:
-    #                     min_state = child
-
-    #             return [min_score, min_state]
-
-    # # Get min/max scores at from leaves, as well as corresponding parent state
-    # score, end_node = minimax_score(state, maximize)[0], minimax_score(state, maximize)[1]
-
-    # num_evaluations = 0
-    # relevant_paths = []
-    # for p in paths:
-    #     if p[-1].get_endgame_score(maximize) == score and p[-2] == end_node:
-    #         relevant_paths.append(p)
-    #     num_evaluations += 1
-
-    # return (relevant_paths[0], score, num_evaluations)
 
 
 def minimax_search_alphabeta(state, alpha=-INF, beta=INF, heuristic_fn=always_zero,
