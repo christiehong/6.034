@@ -162,7 +162,7 @@ def classify(svm, point):
     is unknown.  Returns +1 or -1, or 0 if point is on boundary"""
     if positiveness(svm, point) > 0:
         return 1
-    elif positiveness(svm, point) <0:
+    elif positiveness(svm, point) < 0:
         return -1
     # Else it's on the boundary
     else:
@@ -171,7 +171,7 @@ def classify(svm, point):
 # Equation 2
 def margin_width(svm):
     "Calculate margin width based on current boundary."
-    raise NotImplementedError
+    return 2.0/norm(svm.boundary.w)
 
 # Equation 3
 def check_gutter_constraint(svm):
@@ -179,7 +179,20 @@ def check_gutter_constraint(svm):
         * gutter constraint (positiveness == classification for support vectors)
         * training points must not be between the gutters
     Assumes that the SVM has support vectors assigned."""
-    raise NotImplementedError
+    violations = []
+
+    for support_point in svm.support_vectors:
+        # Gutter constraint
+        if positiveness(svm, support_point) != classify(svm, support_point):
+            violations.append(support_point)
+
+        # Training points can't be in gutter
+        for point in svm.training_points:
+            if abs(positiveness(svm, point)) < abs(positiveness(svm, support_point)):
+                violations.append(point)
+
+    return set(violations)
+
 
 # Equations 4, 5
 def check_alpha_signs(svm):
