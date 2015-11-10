@@ -241,14 +241,19 @@ def check_alpha_equations(svm):
 def misclassified_training_points(svm):
     """Returns the set of training points that are classified incorrectly
     using the current decision boundary."""
-    raise NotImplementedError
+    violations = []
+    for point in svm.training_points:
+        if point.classification != classify(svm, point):
+            violations.append(point)
+
+    return set(violations)
 
 
 #### SURVEY ####################################################################
 
-NAME = None
-COLLABORATORS = None
-HOW_MANY_HOURS_THIS_LAB_TOOK = None
-WHAT_I_FOUND_INTERESTING = None
-WHAT_I_FOUND_BORING = None
-SUGGESTIONS = None
+NAME = 'Laser Nite'
+COLLABORATORS = 'None'
+HOW_MANY_HOURS_THIS_LAB_TOOK = 7
+WHAT_I_FOUND_INTERESTING = 'Neural nets, especially the first part gaining an intuition for the layers of the net and how the logic works to categorize regions is pretty sweet. The rest of the it was all cool too, and when I have some extra time Ill look at implementing the extra credit'
+WHAT_I_FOUND_BORING = 'bugs in the tests that wasted my time, then when I looked on piazza after a while found that I had to re-download stuff'
+SUGGESTIONS = 'None'
