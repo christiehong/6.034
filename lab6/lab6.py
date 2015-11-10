@@ -201,13 +201,41 @@ def check_alpha_signs(svm):
         * all support vectors have alpha > 0
     Assumes that the SVM has support vectors assigned, and that all training
     points have alpha values assigned."""
-    raise NotImplementedError
+    violations = []
+    for point in svm.training_points:
+        # All support vectors have alpha > 0
+        if point in svm.support_vectors:
+            if point.alpha <= 0:
+                violations.append(point)
+        # All non-support-vector training points have alpha = 0
+        elif point.alpha != 0:
+            violations.append(point)
+    return set(violations)
+
 
 def check_alpha_equations(svm):
     """Returns True if both Lagrange-multiplier equations are satisfied,
     otherwise False.  Assumes that the SVM has support vectors assigned, and
     that all training points have alpha values assigned."""
-    raise NotImplementedError
+    eq4 = 0
+    eq5 = []
+    for point in svm.training_points:
+        eq4 += classify(svm, point) * point.alpha
+
+        new_list = []
+        for num in point.coords:
+            new_list.append(classify(svm, point) * point.alpha * num)
+
+        if len(eq5) == 0:
+            eq5 = new_list[:]
+        else:
+            for i in range(len(eq5)):
+                eq5[i] += new_list[i]
+
+    if eq4 == 0 and eq5 == svm.boundary.w:
+        return True
+    else:
+        return False
 
 # Classification accuracy
 def misclassified_training_points(svm):
