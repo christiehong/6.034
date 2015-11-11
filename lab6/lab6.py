@@ -188,34 +188,10 @@ def check_gutter_constraint(svm):
 
         # Training points can't be in gutter
         for point in svm.training_points:
-            # if classify(svm, point) == 0:
-            #     violations.append(point)
-            # elif classify(svm, point) == -1 and classify(svm, support_point) == -1:
-            #     if positiveness(svm, point) > positiveness(svm, support_point):
-            #         violations.append(point)
-            # elif classify(svm, point) == 1 and classify(svm, support_point) == 1:
-            #     if positiveness(svm, point) < positiveness(svm, support_point):
-            #         violations.append(point)
-            print 'point classify'
-            print point.name, point.coords
-            print classify(svm, point)
-            print positiveness(svm, point)
-            print 'support_point classify'
-            print point.name, point.coords
-            print classify(svm, support_point)
-            print positiveness(svm, support_point)
-
             if not support_point in violations:
                 if abs(positiveness(svm, point)) < abs(positiveness(svm, support_point)):
                     violations.append(point)
-
-    print 'svm training points magic'
-    print svm.training_points
-    print 'svm support vectors magic'
-    print svm.support_vectors
-    print 'violations'
-    print violations
-
+                    
     return set(violations)
 
 
