@@ -93,6 +93,7 @@ def is_good_enough(H, training_points, classifier_to_misclassified,
             # if point is misclassified by classifier
             if point in classifier_to_misclassified[classifier_voting_power[0]]:
                 point_score -= classifier_voting_power[1]
+            # else point is correctly classified by classifier
             else:
                 point_score += classifier_voting_power[1]
 
@@ -106,43 +107,19 @@ def is_good_enough(H, training_points, classifier_to_misclassified,
         return True
 
 
-
-
-    # point_to_vote = {}
-    # # initialize
-    # for point in training_points:
-    #     point_to_vote[point] = 0
-
-    # # add up voting power total for each point classification
-    # # vote is list of (classifier, voting_power) tuples
-    # for vote in H:
-    #     for misclassified_point in classifier_to_misclassified[vote[0]]:
-    #         point_to_vote[misclassified_point] += vote[1]
-
-    # # get all misclassified >= 0
-    # misclassified = []
-    # for point in point_to_vote:
-    #     if point_to_vote[point] >= 0:
-    #         misclassified += point
-
-    # if len(misclassified) > mistake_tolerance:
-    #     return False
-    # else:
-    #     return True
-
-    
-
-
-
-
-
 def update_weights(point_to_weight, misclassified_points, error_rate):
     """Given a dictionary mapping training points to their old weights, a list
     of training points misclassified by the current weak classifier, and the
     error rate of the current weak classifier, returns a dictionary mapping
     training points to their new weights.  This function is allowed (but not
     required) to modify the input dictionary point_to_weight."""
-    raise NotImplementedError
+    for point in point_to_weight:
+        if point in misclassified_points:
+            point_to_weight[point] = 1.0/2 * 1.0/error_rate * point_to_weight[point]
+        else:
+            point_to_weight[point] = 1.0/2 * 1.0/(1.0-error_rate) * point_to_weight[point]
+
+    return point_to_weight
 
 def adaboost(training_points, classifier_to_misclassified,
              use_smallest_error=True, mistake_tolerance=0, max_num_rounds=INF):
