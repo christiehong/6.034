@@ -71,7 +71,12 @@ def pick_best_classifier(classifier_to_error_rate, use_smallest_error=True):
 def calculate_voting_power(error_rate):
     """Given a classifier's error rate (a number), returns the voting power
     (aka alpha, or coefficient) for that classifier."""
-    raise NotImplementedError
+    if error_rate == 0:
+        return INF
+    elif error_rate == 1:
+        return -INF
+    else:
+        return 1/2.0 * ln((1-error_rate)/error_rate)
 
 def is_good_enough(H, training_points, classifier_to_misclassified,
                    mistake_tolerance=0):
@@ -81,7 +86,55 @@ def is_good_enough(H, training_points, classifier_to_misclassified,
     returns False if H misclassifies more points than the tolerance allows,
     otherwise True.  H is represented as a list of (classifier, voting_power)
     tuples."""
-    raise NotImplementedError
+    misclassified_points = []
+    for point in training_points:
+        point_score = 0
+        for classifier_voting_power in H:
+            # if point is misclassified by classifier
+            if point in classifier_to_misclassified[classifier_voting_power[0]]:
+                point_score -= classifier_voting_power[1]
+            else:
+                point_score += classifier_voting_power[1]
+
+
+        if point_score <= 0:
+            misclassified_points.append(point)
+
+    if len(misclassified_points) > mistake_tolerance:
+        return False
+    else:
+        return True
+
+
+
+
+    # point_to_vote = {}
+    # # initialize
+    # for point in training_points:
+    #     point_to_vote[point] = 0
+
+    # # add up voting power total for each point classification
+    # # vote is list of (classifier, voting_power) tuples
+    # for vote in H:
+    #     for misclassified_point in classifier_to_misclassified[vote[0]]:
+    #         point_to_vote[misclassified_point] += vote[1]
+
+    # # get all misclassified >= 0
+    # misclassified = []
+    # for point in point_to_vote:
+    #     if point_to_vote[point] >= 0:
+    #         misclassified += point
+
+    # if len(misclassified) > mistake_tolerance:
+    #     return False
+    # else:
+    #     return True
+
+    
+
+
+
+
 
 def update_weights(point_to_weight, misclassified_points, error_rate):
     """Given a dictionary mapping training points to their old weights, a list
