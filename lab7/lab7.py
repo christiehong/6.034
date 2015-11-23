@@ -53,9 +53,9 @@ def pick_best_classifier(classifier_to_error_rate, use_smallest_error=True):
     """Given a dictionary mapping classifiers to their error rates, returns the
     best* classifier.  Best* means 'smallest error rate' if use_smallest_error
     is True, otherwise 'error rate furthest from 1/2'."""
-    
+
     if use_smallest_error:
-        return min(classifier_to_error_rate, key=classifier_to_error_rate.get)
+        return min(sorted(classifier_to_error_rate), key=classifier_to_error_rate.get)
 
     else:
         # Furthest from 1/2
@@ -64,7 +64,7 @@ def pick_best_classifier(classifier_to_error_rate, use_smallest_error=True):
 
         classifier_to_error_rate = fix_roundoff_error(classifier_to_error_rate)
 
-        return max(classifier_to_error_rate, key=classifier_to_error_rate.get)
+        return max(sorted(classifier_to_error_rate), key=classifier_to_error_rate.get)
 
 
 
