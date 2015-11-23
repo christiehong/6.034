@@ -54,17 +54,19 @@ def pick_best_classifier(classifier_to_error_rate, use_smallest_error=True):
     best* classifier.  Best* means 'smallest error rate' if use_smallest_error
     is True, otherwise 'error rate furthest from 1/2'."""
 
+    new_classifier_to_error_rate = classifier_to_error_rate.copy()
+
     if use_smallest_error:
-        return min(sorted(classifier_to_error_rate), key=classifier_to_error_rate.get)
+        return min(sorted(new_classifier_to_error_rate), key=new_classifier_to_error_rate.get)
 
     else:
         # Furthest from 1/2
-        for classifier in classifier_to_error_rate:
-            classifier_to_error_rate[classifier] = abs(classifier_to_error_rate[classifier] - 0.5)
+        for classifier in new_classifier_to_error_rate:
+            new_classifier_to_error_rate[classifier] = abs(new_classifier_to_error_rate[classifier] - 0.5)
 
-        classifier_to_error_rate = fix_roundoff_error(classifier_to_error_rate)
+        new_classifier_to_error_rate = fix_roundoff_error(new_classifier_to_error_rate)
 
-        return max(sorted(classifier_to_error_rate), key=classifier_to_error_rate.get)
+        return max(sorted(new_classifier_to_error_rate), key=new_classifier_to_error_rate.get)
 
 
 
@@ -126,14 +128,36 @@ def adaboost(training_points, classifier_to_misclassified,
     """Performs the Adaboost algorithm for up to max_num_rounds rounds.
     Returns the resulting overall classifier H, represented as a list of
     (classifier, voting_power) tuples."""
-    raise NotImplementedError
+    point_to_weight = {}
+    # initiialize points weights
+    for point in training_points:
+        point_to_weight[point] = 1.0/len(training_points)
+
+    H = []
+
+    round_count = 0
+    while round_count < max_num_rounds:
+        classifier_to_error_rate = calculate_error_rates(point_to_weight, classifier_to_misclassified)
+        best_classifier = pick_best_classifier(classifier_to_error_rate, use_smallest_error)
+        best_classifier_voting_power = calculate_voting_power(classifier_to_error_rate[best_classifier])
+
+        round_count += 1
+        if is_good_enough(H, training_points, classifier_to_misclassified, mistake_tolerance) or fix_roundoff_error(classifier_to_error_rate[best_classifier]) == 0.5:
+            break
+
+        H.append((best_classifier,best_classifier_voting_power))
+        point_to_weight = update_weights(point_to_weight, classifier_to_misclassified[best_classifier], classifier_to_error_rate[best_classifier])
+
+    return H
+
+
 
 
 #### SURVEY ####################################################################
 
-NAME = None
-COLLABORATORS = None
-HOW_MANY_HOURS_THIS_LAB_TOOK = None
-WHAT_I_FOUND_INTERESTING = None
-WHAT_I_FOUND_BORING = None
-SUGGESTIONS = None
+NAME = 'Laser Nite'
+COLLABORATORS = 'None'
+HOW_MANY_HOURS_THIS_LAB_TOOK = 5
+WHAT_I_FOUND_INTERESTING = 'adaboost'
+WHAT_I_FOUND_BORING = 'adaboost'
+SUGGESTIONS = 'adaboost'
